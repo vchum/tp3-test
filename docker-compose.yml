@@ -1,0 +1,75 @@
+version: '3.1'
+
+services:
+  sel:
+    build: Selenium/
+    container_name: se-container
+    ports:
+      - 4444:4444
+      - 7900:7900
+    networks:
+      - myappnet
+
+  app:
+    build: python-api-handle-it/docker-app/python/
+    container_name: app-container
+    ports:
+      - 5000:80
+    stdin_open: true
+    tty: true
+    volumes:
+      - ./python-api-handle-it/app:/app
+    networks:
+      - myappnet
+    
+  test-unit:
+    build: Unit/
+    container_name: unit-container  
+    working_dir: /app/Reports/Unit
+    command: python3 /app/test/unit/test.py  
+    stdin_open: true
+    tty: true
+    volumes:
+      - ./python-api-handle-it/app:/app
+    networks:
+      - myappnet
+  
+  test-robot:
+    build: Robot/
+    container_name: robot-container
+    environment:
+      APP_HOST: http://app-container:5000
+    working_dir: /app/Reports/Robot
+    command: robot /app/test/system/machine.robot
+    stdin_open: true
+    tty: true
+    volumes:
+      - ./python-api-handle-it/app:/app
+    networks:
+      - myappnet
+      
+  qual-pylint:
+    build: Pylint/
+    container_name: pylint-container    
+    command: bash -c "mkdir -p /app/Reports/Pylint && pylint app > /app/Reports/Pylint/reports-pylint.txt"
+    stdin_open: true
+    tty: true
+    volumes:
+      - ./python-api-handle-it/app:/app
+    networks:
+      - myappnet
+      
+  qual-radon:
+    build: Radon/
+    container_name: radon-container
+    working_dir: /app/Reports/Radon
+    command: bash -c "radon cc /app -O reports-radon-cc.txt && radon raw /app -O reports-radon-raw.txt"
+    stdin_open: true
+    tty: true
+    volumes:
+      - ./python-api-handle-it/app:/app
+    networks:
+      - myappnet
+
+networks:
+  myappnet:
